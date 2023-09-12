@@ -2,6 +2,24 @@ let year = (new Date()).getFullYear();
 let month = (new Date()).getMonth() + 1;
 let items = [];
 
+function count() {
+    let cnt = 0;
+    for (let i = 0; i < items.length; i ++) {
+        if (!items[i].state) continue;
+
+        let flag = true;
+        for (let j = i + 1; j < items.length; j ++ ) {
+            if (items[j].year === items[i].year && items[j].month === items[i].month && items[j].day === items[i].day) {
+                flag = false;
+                break;
+            }
+        }
+
+        if (flag) cnt ++ ;
+    }
+    return cnt;
+}
+
 function getItems() {
     $.ajax ({
         url: "https://iamsjw.com/api/punchin/getdays/",
@@ -10,12 +28,13 @@ function getItems() {
             if (resp["result"] === "success") {
                 items = resp["items"];
                 printDays();
+                $('.punchin-counter').text(`已打卡${count()}天`);
             }
         }
     })
 }
 
-function printMonth() { 
+function printMonth() {
     $(".punchin-container-month > .col").text(`${year} 年 ${month} 月`);
 }
 
