@@ -1,3 +1,3 @@
-scp index.html springboot:~/punchin
-scp -r static/ springboot:~/punchin
-ssh springboot 'cd ~/punchin/ && ./run.sh'
+scp index.html springboot:~/tomato
+scp -r static/ springboot:~/tomato
+ssh springboot 'cd ~/tomato/ && ./run.sh'
