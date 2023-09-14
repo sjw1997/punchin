@@ -1,6 +1,7 @@
 .tomato-container {
     width: 25em;
     box-shadow: rgba(0, 0, 0, 0.04) 0px 2px 6px, rgba(0, 0, 0, 0.02) 0px 4px 8px, rgba(0, 0, 0, 0.02) 0px 6px 12px;
+    user-select: none;
 }
 
 .tomato-container-month {
@@ -18,7 +19,6 @@
 }
 
 .tomato-container-day:hover {
-    cursor: pointer;
     background-color: #DEDEDE;
     border-radius: 50%;
 }
@@ -30,4 +30,10 @@
 
 .clock_goal-container {
     box-shadow: rgba(0, 0, 0, 0.04) 0px 2px 6px, rgba(0, 0, 0, 0.02) 0px 4px 8px, rgba(0, 0, 0, 0.02) 0px 6px 12px;
+    user-select: none;
+}
+
+.clock-time-display {
+    font-size: 70px;
+    padding: 70px 0;
 }

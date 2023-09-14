@@ -1,34 +1,37 @@
 let year = (new Date()).getFullYear();
 let month = (new Date()).getMonth() + 1;
 let items = [];
-const startMinutes = 0, startSeconds = 11;
+const startMinutes = 25, startSeconds = 0;
 let minutes = startMinutes, seconds = startSeconds;
 let interval_id = -1;
-const userId = 1;
-let scores = 0, currentDayId = -1;
+const userId = 3;
+let scores = 0, currentDayId = -1, targetFocusSeconds = -1, username = "";
 
 function getDays() {
     $.ajax ({
-        url: `http://127.0.0.1:3000/api/tomato/get/days/${userId}/`,
+        url: `https://iamsjw.com/api/tomato/get/days/${userId}/`,
         type: "GET",
         success: function(resp) {
             if (resp["result"] === "success") {
                 items = resp["items"];
                 printDays();
                 printCounter();
+                printCircleProgress();
             }
         }
     })
 }
 
-function getScores() {
+function getUserInfo() {
     $.ajax ({
-        url: `http://127.0.0.1:3000/api/tomato/get/scores/${userId}/`,
+        url: `https://iamsjw.com/api/tomato/get/user_info/${userId}/`,
         type: "GET",
         success: function(resp) {
             if (resp["result"] === "success") {
-                items = resp["items"];
                 scores = resp["scores"];
+                targetFocusSeconds = resp["targetFocusSeconds"];
+                username = resp["username"];
+                getCurrentDayId();
             }
         }
     })
@@ -41,7 +44,7 @@ function getCurrentDayId() {
     const day = currentDate.getDate();
 
     $.ajax ({
-        url: `http://127.0.0.1:3000/api/tomato/get/current_day_id/`,
+        url: `https://iamsjw.com/api/tomato/get/current_day_id/`,
         type: "GET",
         data: {
             userId,
@@ -60,7 +63,7 @@ function getCurrentDayId() {
 
 function updateFocusSeconds() {
     $.ajax ({
-        url: `http://127.0.0.1:3000/api/tomato/update/focus_seconds/`,
+        url: `https://iamsjw.com/api/tomato/update/focus_seconds/`,
         type: "POST",
         data: {
             userId,
@@ -84,6 +87,7 @@ function updateFocusSeconds() {
 
                 printDays();
                 printCounter();
+                printCircleProgress();
             }
         }
     })
@@ -91,7 +95,7 @@ function updateFocusSeconds() {
 
 function updateScores(delta) {
     $.ajax ({
-        url: `http://127.0.0.1:3000/api/tomato/update/scores/`,
+        url: `https://iamsjw.com/api/tomato/update/scores/`,
         type: "POST",
         data: {
             userId,
@@ -102,6 +106,21 @@ function updateScores(delta) {
                 scores += delta;
                 printCounter();
             }
+        }
+    })
+}
+
+function updateTargetFocusSeconds(newTargetFocusSeconds) {
+    $.ajax({
+        url: "https://iamsjw.com/api/tomato/update/target_focus_seconds/",
+        data: {
+            userId,
+            newTargetFocusSeconds,
+        },
+        type: "POST",
+        success(resp) {
+            targetFocusSeconds = newTargetFocusSeconds;
+            printCircleProgress();
         }
     })
 }
@@ -133,11 +152,11 @@ function howManyDays(year, month) {
 
 function check(year, month, day) {
     for (const item of items) {
-        if (item.year === year && item.month === month && item.day === day && item.state) {
-            return true;
+        if (item.year === year && item.month === month && item.day === day) {
+            return [item.state, ...secondsSplit(item.focusSeconds)];
         }
     }
-    return false;
+    return [false, 0, 0, 0];
 }
 
 function printDays() {
@@ -157,12 +176,14 @@ function printDays() {
     for (let i = 1; i <= days; ) {
         for (; whichDay < 7; whichDay ++, i ++ ) {
             if (i <= days) {
-                if (!check(year, month, i))
-                    str = str + `<div class="col tomato-container-day">${i}</div>`
+                const [isReachedTarget, hours, minutes, seconds] = check(year, month, i);
+                const popoverStr = `data-bs-toggle="popover"  data-bs-placement="bottom"  data-bs-trigger="hover focus" data-bs-content="${hours}小时 ${minutes}分钟 ${seconds}秒"`;
+                if (!isReachedTarget)
+                    str = str + `<div class="col tomato-container-day" ${popoverStr}>${i}</div>`
                 else
-                    str = str + `<div class="col tomato-container-day">${finished}</div>`
+                    str = str + `<div class="col tomato-container-day" ${popoverStr}>${finished}</div>`
             }
-            else str = str + `<div class="col tomato-container-day"></div>`;
+            else str = str + `<div class="col"></div>`;
         }
 
         s.append(`<div class="row">${str}</div>`)
@@ -170,6 +191,17 @@ function printDays() {
         whichDay = 0;
         str = "";
     }
+
+    const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
+    const popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
+}
+
+function secondsSplit(seconds) {
+    const hours = parseInt(seconds / 3600);
+    seconds -= hours * 3600;
+    const minutes = parseInt(seconds / 60);
+    seconds -= minutes * 60;
+    return [hours, minutes, seconds];
 }
 
 function printCounter() {
@@ -178,6 +210,8 @@ function printCounter() {
         totFoucsSeconds += item.focusSeconds;
         if (item.state) cnt ++ ;
     }
+
+    const [hours, minutes, seconds] = secondsSplit(totFoucsSeconds);
 
     const totFoucsHours = parseInt(totFoucsSeconds / 3600);
     totFoucsSeconds -= totFoucsHours * 3600;
@@ -193,7 +227,11 @@ function printCounter() {
     t.text("");
     t.append(`${coinSvg} ${scores} <br>`);
     t.append(`已打卡${cnt}天<br>`);
-    t.append(`总专注时长： ${totFoucsHours}小时 ${totFoucsMinutes} 分钟 ${totFoucsSeconds}秒`);
+    t.append(`总专注时长： ${hours}小时 ${minutes} 分钟 ${seconds}秒`);
+}
+
+function printFocusSeconds(minutes, seconds) {
+    $('.clock-time-display').text(`${zero(minutes)}:${zero(seconds)}`);
 }
 
 function zero(t) {
@@ -243,7 +281,7 @@ function bindBtnEvent() {
                         seconds = 59;
                     }
                 }
-                $('.clock-time-display').text(`${zero(minutes)}:${zero(seconds)}`);
+                printFocusSeconds(minutes, seconds);
             }, 1000);
         } else if (text === "暂停") {
             e.currentTarget.innerText = "开始";
@@ -252,13 +290,67 @@ function bindBtnEvent() {
     });
 }
 
+function printCircleProgress() {
+    var canvas = document.getElementById("tutorial");
+    if (canvas.getContext) {
+        var ctx = canvas.getContext("2d");
+        const width = canvas.width, height = canvas.height;
+
+        var x = parseInt(width / 2), y = parseInt(height / 2);
+        var r2 = parseInt(Math.min(width, height) / 2);
+        var r1 = parseInt(Math.min(width, height) / 2.5);
+        var startAngle = 0, endAngle = Math.PI * 2;
+        
+
+        ctx.beginPath();
+        ctx.arc(x, y, r2, startAngle, endAngle);
+        ctx.fillStyle = "#F4F4F5";
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(x, y, r1, startAngle, endAngle);
+        ctx.fillStyle = "#FDFDFE";
+        ctx.fill();
+
+
+        let focusSeconds = 0;
+        for (const item of items) {
+            if (item.id === currentDayId) {
+                focusSeconds = item.focusSeconds;
+                break;
+            }
+        }
+
+        var delta = Math.PI * 2 * Math.min(1, focusSeconds / targetFocusSeconds);
+        startAngle = -0.5 * Math.PI;
+        endAngle = startAngle + delta;
+
+        ctx.beginPath();
+        ctx.arc(x, y, r2, startAngle, endAngle);
+        ctx.arc(x, y, r1, endAngle, startAngle, true);
+        ctx.lineTo(x, y - r2);
+        ctx.fillStyle = "#17CEA2";
+        ctx.fill();
+
+        ctx.font = "20px sans-serif";
+        ctx.fillStyle = "black";
+        ctx.fillText(`每日目标`, x - 37, y - 30);
+
+        ctx.font = "30px sans-serif";
+        const str = `${(targetFocusSeconds / 3600).toFixed(1)}小时`
+        ctx.fillText(str, x - str.length * 11 + 10, y + 10);
+
+        const [hours, minutes, seconds] = secondsSplit(focusSeconds);
+        $("#today-focus-time").text(`已完成： ${hours}小时 ${minutes}分钟 ${seconds}秒`);
+    }
+}
+
 function init() {
+    getUserInfo();
     printMonth();
     printWhatDay();
     printDays();
-    getDays();
-    getScores();
-    getCurrentDayId();
+    printFocusSeconds(startMinutes, startSeconds);
     bindBtnEvent();
 }
 
