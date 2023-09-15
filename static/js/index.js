@@ -277,6 +277,10 @@ function bindBtnEvent() {
                         minutes = startMinutes;
                         seconds = startSeconds;
                         e.currentTarget.innerText = "开始";
+
+                        if (Notification.permission === "granted") {
+                            const notification = new Notification("此个番茄时钟结束了！休息会吧");
+                        }
                     } else {
                         seconds = 59;
                     }
