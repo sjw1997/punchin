@@ -238,6 +238,37 @@ function zero(t) {
     return t > 9 ? t : ('0' + t);
 }
 
+function modifyCoutdown() {
+    const b = $("#button-clock");
+    const text = b.text();
+    if (text === "开始") {
+        b.text("暂停");
+        interval_id = setInterval(() => {
+            seconds -- ;
+            if (seconds < 0) {
+                minutes -- ;
+                if (minutes < 0) {
+                    clearInterval(interval_id);
+                    updateFocusSeconds();
+                    minutes = startMinutes;
+                    seconds = startSeconds;
+                    b.text("开始");
+
+                    if (Notification.permission === "granted") {
+                        const notification = new Notification("此个番茄时钟结束了！休息会吧");
+                    }
+                } else {
+                    seconds = 59;
+                }
+            }
+            printFocusSeconds(minutes, seconds);
+        }, 1000);
+    } else if (text === "暂停") {
+        b.text("开始");
+        clearInterval(interval_id);
+    }
+}
+
 function bindBtnEvent() {
     $('.button-page').on('click', function(e) {
         const text = "" + e.currentTarget.innerText;
@@ -263,33 +294,11 @@ function bindBtnEvent() {
         printDays();
     });
 
-    $('#button-clock').on('click', function(e) {
-        const text = "" + e.currentTarget.innerText;
-        if (text === "开始") {
-            e.currentTarget.innerText = "暂停";
-            interval_id = setInterval(() => {
-                seconds -- ;
-                if (seconds < 0) {
-                    minutes -- ;
-                    if (minutes < 0) {
-                        clearInterval(interval_id);
-                        updateFocusSeconds();
-                        minutes = startMinutes;
-                        seconds = startSeconds;
-                        e.currentTarget.innerText = "开始";
+    $('#button-clock').on('click', modifyCoutdown);
 
-                        if (Notification.permission === "granted") {
-                            const notification = new Notification("此个番茄时钟结束了！休息会吧");
-                        }
-                    } else {
-                        seconds = 59;
-                    }
-                }
-                printFocusSeconds(minutes, seconds);
-            }, 1000);
-        } else if (text === "暂停") {
-            e.currentTarget.innerText = "开始";
-            clearInterval(interval_id);
+    document.addEventListener('keydown', function(event) {
+        if (event.code === 'Space') {
+          modifyCoutdown();
         }
     });
 }
